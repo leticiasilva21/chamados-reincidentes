@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Chamados Reincidentes</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+/* Layout: números-chave, barras de concentração e fila de casos filtrável. Tema claro fixo. */
+:root{--bg:#ffffff;--panel:#f5f7f8;--ink:#17262e;--mute:#5d6d75;--line:#dde4e7;--accent:#0f6e7a;--accent-soft:#e1f0f1;--bad:#b4381f;--bad-soft:#fbe9e4;--warn:#9a6a00;--warn-bar:#d9a62e;--warn-soft:#fbf1d6;--vio:#5b3fa0;--vio-soft:#ece6f7;
+--display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;--body:"Source Sans 3",system-ui,-apple-system,sans-serif;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1100px;margin:0 auto;padding-block:28px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-family:var(--display);font-weight:700;font-size:2.1rem;margin:0;line-height:1.1;text-wrap:balance}
+h2{font-family:var(--display);font-weight:600;font-size:1.35rem;margin:0 0 10px}
+.sub{color:var(--mute);max-width:75ch;margin:8px 0 0}
+.top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.stamp{font-size:.88rem;color:var(--mute);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button{font:inherit;border:1px solid var(--accent);background:var(--bg);color:var(--accent);border-radius:6px;padding:6px 12px;cursor:pointer;font-weight:600}
+button:hover{background:var(--accent-soft)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button[disabled]{opacity:.6;cursor:wait}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:24px 0}
+.kpi{background:var(--panel);border-radius:8px;padding:14px 16px}
+.kpi b{display:block;font-family:var(--display);font-size:2rem;font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi span{color:var(--mute);font-size:.88rem}
+.kpi.bad b{color:var(--bad)}.kpi.vio b{color:var(--vio)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px;margin:8px 0 30px}
+.bars{display:grid;gap:6px}
+.bar{display:grid;grid-template-columns:170px minmax(0,1fr) 34px;gap:8px;align-items:center;font-size:.9rem}
+.bar .t{height:14px;background:var(--panel);border-radius:3px;overflow:hidden;display:flex}
+.bar .t i{display:block;height:100%}
+.bar .n{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.leg{display:flex;gap:14px;font-size:.82rem;color:var(--mute);margin-bottom:8px;flex-wrap:wrap}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:6px 0 16px;padding:12px;background:var(--panel);border-radius:8px}
+.filters select,.filters input{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);min-width:0;max-width:100%}
+.filters input{flex:1 1 200px}
+.count{color:var(--mute);font-size:.88rem;margin-left:auto}
+.caso{border:1px solid var(--line);border-left:4px solid var(--warn-bar);border-radius:6px;padding:14px 16px;margin-bottom:12px}
+.caso.nr{border-left-color:var(--bad)}
+.head{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:baseline}
+.head .u{font-weight:700;word-break:break-word;min-width:0}
+.pill{font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap;letter-spacing:.02em}
+.p-nr{background:var(--bad-soft);color:var(--bad)}.p-ok{background:var(--warn-soft);color:var(--warn)}.p-it{background:var(--accent-soft);color:var(--accent)}.p-or{background:var(--panel);color:var(--mute)}.p-vio{background:var(--vio-soft);color:var(--vio)}
+.meta{color:var(--mute);font-size:.85rem;margin-top:2px}
+.tl{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:12px}
+.tl>li{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;font-size:.9rem}
+.tl .d{font-variant-numeric:tabular-nums;font-weight:600;color:var(--accent)}
+.tl .tt{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
+.res{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:.78rem;padding:1px 6px;border-radius:4px;background:var(--panel);color:var(--ink);border:1px solid var(--line)}
+.res.rep{background:var(--vio-soft);border-color:var(--vio);color:var(--vio);font-weight:700}
+.cod{color:var(--mute);font-size:.78rem}
+a.cod{color:var(--accent);text-decoration:none}a.cod:hover{text-decoration:underline}
+.enc{margin-top:4px;display:grid;gap:2px;font-size:.86rem;padding-left:10px;border-left:2px solid var(--line)}
+.enc .k{color:var(--mute);font-weight:600}
+.enc .nr{color:var(--bad)}
+.enc .vazio{color:var(--mute);font-style:italic}
+.notes{background:var(--panel);border-radius:8px;padding:14px 18px;margin:0 0 28px;max-width:85ch}
+.notes li{margin:4px 0}
+.gate{max-width:420px;margin:80px auto;display:grid;gap:12px}
+.gate input{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px}
+.msg{color:var(--bad);font-size:.9rem}
+.skel{color:var(--mute);padding:40px 0}
+@media (max-width:520px){.bar{grid-template-columns:120px minmax(0,1fr) 30px}.tl>li{grid-template-columns:44px minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><p class="skel">Carregando chamados…</p></div>
+<script>
+const SUPA = "https://ucavfotyciwnqwurzjny.supabase.co";
+const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjYXZmb3R5Y2l3bnF3dXJ6am55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5NzUzNjYsImV4cCI6MjA3MzU1MTM2Nn0.nE_W8wZZvJfzlvhP83ge1J0ooS3EcFVSlQYK28eTGU0";
+const JESTOR = "https://carpediemhomes.jestor.com/app/63i03sgwbd7a97a9yh2p2?m=editRecordModal&object=chamados&id=";
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmtData = (iso) => { const d = new Date(iso); return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" }); };
+const fmtHora = (iso) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
+const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function lerChave() {
+  const h = location.hash.replace(/^#/, "");
+  if (h) { try { localStorage.setItem("cr_chave", h); } catch (e) {} return h; }
+  try { return localStorage.getItem("cr_chave") || ""; } catch (e) { return ""; }
+}
+
+async function buscar(chave) {
+  const r = await fetch(SUPA + "/rest/v1/rpc/chamados_reinc_dados", {
+    method: "POST", headers: { apikey: ANON, Authorization: "Bearer " + ANON, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_chave: chave }),
+  });
+  if (r.status === 403 || r.status === 401) throw new Error("chave");
+  if (!r.ok) throw new Error("Não consegui ler os dados (erro " + r.status + "). Tente de novo em alguns minutos.");
+  return r.json();
+}
+
+function telaChave(msg) {
+  $("#app").innerHTML = `<form class="gate" id="gate"><h1>Chamados reincidentes</h1>
+    <p class="sub">Cole a chave de acesso que veio no link do painel.</p>
+    <label for="k" class="cod">Chave de acesso</label><input id="k" autocomplete="off">
+    <button type="submit">Abrir painel</button>${msg ? `<p class="msg">${esc(msg)}</p>` : ""}</form>`;
+  $("#gate").addEventListener("submit", (e) => { e.preventDefault(); const k = $("#k").value.trim(); if (k) { location.hash = k; iniciar(); } });
+}
+
+let D = null;
+async function iniciar() {
+  const chave = lerChave();
+  if (!chave) return telaChave();
+  try { D = await buscar(chave); }
+  catch (e) {
+    if (e.message === "chave") { try { localStorage.removeItem("cr_chave"); } catch (x) {} return telaChave("Chave inválida. Confira o link."); }
+    $("#app").innerHTML = `<p class="msg">${esc(e.message)}</p>`; return;
+  }
+  montar();
+}
+
+async function atualizarAgora(btn) {
+  btn.disabled = true; btn.textContent = "Atualizando…";
+  try {
+    await fetch(SUPA + "/functions/v1/chamados-reincidentes-sync", { method: "POST", headers: { apikey: ANON, "Content-Type": "application/json" }, body: "{}" });
+    D = await buscar(lerChave()); montar();
+  } catch (e) { btn.disabled = false; btn.textContent = "Tentar de novo"; }
+}
+
+function montar() {
+  const C = D.casos || [];
+  const nr = C.filter((c) => c.tipo === "Fechado sem resolver");
+  const reab = C.reduce((a, c) => a + c.n - 1, 0);
+  const total = D.total_chamados || 0;
+  // códigos de reserva repetidos dentro de cada caso
+  for (const c of C) {
+    const cont = {};
+    c.chamados.forEach((x) => { if (x.reserva) cont[x.reserva] = (cont[x.reserva] || 0) + 1; });
+    c.repetidas = Object.keys(cont).filter((k) => cont[k] > 1);
+  }
+  $("#app").innerHTML = `
+  <div class="top"><h1>Chamados reincidentes</h1>
+   <div class="stamp"><span>Últimos 60 dias (desde ${fmtData(D.janela_inicio)}) · atualizado ${fmtHora(D.atualizado_em)}</span><button id="refresh" type="button">Atualizar agora</button></div></div>
+  <p class="sub">Mesma unidade, mesmo problema, chamado aberto de novo. Os dados vêm do Jestor e são atualizados sozinhos a cada 10 minutos.</p>
+  <div class="kpis">
+   <div class="kpi"><b>${C.length}</b><span>casos de problema repetido</span></div>
+   <div class="kpi"><b>${new Set(C.map((c) => c.unidade)).size}</b><span>unidades afetadas</span></div>
+   <div class="kpi"><b>${reab}</b><span>chamados reabertos (${total ? (reab / total * 100).toFixed(1).replace(".", ",") : "0"}% de ${total.toLocaleString("pt-BR")})</span></div>
+   <div class="kpi bad"><b>${nr.length}</b><span>com chamado fechado sem resolver</span></div>
+   <div class="kpi vio"><b>${C.filter((c) => c.repetidas.length).length}</b><span>voltaram na mesma reserva</span></div>
+  </div>
+  <div class="grid2">
+   <div><h2>Por tipo de problema</h2>${legenda()}<div class="bars" id="b-item"></div></div>
+   <div><h2>Por praça</h2>${legenda()}<div class="bars" id="b-praca"></div>
+    <h2 style="margin-top:22px">Rotas com mais casos</h2><div class="bars" id="b-rota"></div></div>
+  </div>
+  <div class="notes"><b>Como ler</b><ul>
+   <li><b>Fechado sem resolver</b>: um chamado anterior do caso foi encerrado com algo como "estadia finalizou", "hóspede fez checkout", "realocado", "op ciente" ou "paliativo". <b>Resolvido, mas voltou</b>: o anterior foi dado como resolvido e o problema reapareceu.</li>
+   <li>O <span class="res rep">código roxo</span> marca reserva que aparece em mais de um chamado do mesmo caso: o problema voltou com o mesmo hóspede. Código cinza: voltou com outro hóspede.</li>
+   <li>Embaixo de cada chamado está o que quem encerrou registrou: <i>Como foi solucionado</i>, <i>Motivo</i>, <i>Repasse ao CS</i> e, quando há manutenção vinculada, quem resolveu, o que foi feito e o custo de mão de obra. O chat de comentários do Jestor não sai pela API, então aparece só a quantidade.</li>
+   <li>A ligação entre chamados é automática, pelo texto do título (ex.: "pia entupida" três vezes). Na conferência manual de set–out, cerca de 85% dos casos apontados eram reincidência de verdade. Limpeza e enxoval ficam de fora.</li>
+  </ul></div>
+  <h2>Casos</h2>
+  <div class="filters">
+   <select id="f-tipo" aria-label="Situação"><option value="">Todas as situações</option><option>Fechado sem resolver</option><option>Resolvido, mas voltou</option></select>
+   <select id="f-res" aria-label="Reserva"><option value="">Qualquer reserva</option><option value="mesma">Voltou na mesma reserva</option><option value="outra">Só em reservas diferentes</option></select>
+   <select id="f-item" aria-label="Problema"><option value="">Todos os problemas</option></select>
+   <select id="f-praca" aria-label="Praça"><option value="">Todas as praças</option></select>
+   <select id="f-rota" aria-label="Rota"><option value="">Todas as rotas</option></select>
+   <input id="f-q" type="search" placeholder="Buscar unidade, reserva ou texto">
+   <span class="count" id="count"></span>
+  </div>
+  <div id="list"></div>`;
+  $("#refresh").addEventListener("click", (e) => atualizarAgora(e.currentTarget));
+  bars("#b-item", "problema"); bars("#b-praca", "praca"); bars("#b-rota", "rota", 8);
+  opts("#f-item", "problema"); opts("#f-praca", "praca"); opts("#f-rota", "rota");
+  ["#f-tipo", "#f-res", "#f-item", "#f-praca", "#f-rota"].forEach((s) => $(s).addEventListener("change", render));
+  $("#f-q").addEventListener("input", render);
+  render();
+}
+
+const legenda = () => `<div class="leg"><span><i style="background:var(--bad)"></i>fechado sem resolver</span><span><i style="background:var(--warn-bar)"></i>resolvido, mas voltou</span></div>`;
+
+function bars(el, key, top) {
+  const m = {};
+  D.casos.forEach((c) => { const k = c[key] || "—"; m[k] = m[k] || [0, 0]; m[k][c.tipo === "Fechado sem resolver" ? 0 : 1]++; });
+  let rows = Object.entries(m).sort((a, b) => b[1][0] + b[1][1] - (a[1][0] + a[1][1]));
+  if (top) rows = rows.slice(0, top);
+  const mx = Math.max(1, ...rows.map((r) => r[1][0] + r[1][1]));
+  $(el).innerHTML = rows.map(([k, [a, b]]) => `<div class="bar"><span>${esc(k)}</span><span class="t"><i style="width:${a / mx * 100}%;background:var(--bad)"></i><i style="width:${b / mx * 100}%;background:var(--warn-bar)"></i></span><span class="n">${a + b}</span></div>`).join("");
+}
+function opts(id, key) {
+  [...new Set(D.casos.map((c) => c[key]).filter(Boolean))].sort().forEach((v) => { const o = document.createElement("option"); o.textContent = v; $(id).appendChild(o); });
+}
+
+function encerramento(x) {
+  const L = [];
+  if (x.solucao) L.push(`<div><span class="k">Como foi solucionado:</span> <span class="${x.nr ? "nr" : ""}">${esc(x.solucao)}</span></div>`);
+  if (x.motivo) L.push(`<div><span class="k">Motivo:</span> ${esc(x.motivo)}</div>`);
+  if (x.repasse) L.push(`<div><span class="k">Repasse ao CS:</span> ${esc(x.repasse)}</div>`);
+  const m = x.manutencao;
+  if (m) {
+    const partes = [m.quem && `resolvido por ${esc(m.quem)}`, m.feito && `"${esc(m.feito)}"`, m.mao_de_obra && `mão de obra ${brl(m.mao_de_obra)}`, m.etapa && m.etapa !== "Finalizada" && `<b>${esc(m.etapa)}</b>`].filter(Boolean);
+    L.push(`<div><span class="k">Manutenção:</span> ${partes.length ? partes.join(" · ") : '<span class="vazio">sem detalhes</span>'}</div>`);
+  }
+  if (!L.length) L.push(`<div class="vazio">Sem registro de solução.</div>`);
+  const rod = [x.aberto_por && `aberto por ${esc(x.aberto_por)}`, x.finalizado_em && `finalizado em ${fmtHora(x.finalizado_em)}`, x.comentarios && `${x.comentarios} comentário${x.comentarios > 1 ? "s" : ""} no Jestor`].filter(Boolean);
+  if (rod.length) L.push(`<div class="cod">${rod.join(" · ")}</div>`);
+  return `<div class="enc">${L.join("")}</div>`;
+}
+
+function render() {
+  const t = $("#f-tipo").value, r = $("#f-res").value, i = $("#f-item").value, p = $("#f-praca").value, ro = $("#f-rota").value, q = $("#f-q").value.toLowerCase().trim();
+  const L = D.casos.filter((c) => (!t || c.tipo === t) && (!i || c.problema === i) && (!p || c.praca === p) && (!ro || c.rota === ro)
+    && (!r || (r === "mesma" ? c.repetidas.length : !c.repetidas.length)) && (!q || JSON.stringify(c).toLowerCase().includes(q)));
+  $("#count").textContent = L.length + " de " + D.casos.length + " casos";
+  $("#list").innerHTML = L.map((c) => `<div class="caso ${c.tipo === "Fechado sem resolver" ? "nr" : ""}">
+   <div class="head"><span class="u">${esc(c.unidade)}</span><span class="pill p-it">${esc(c.problema)}</span>
+    <span class="pill ${c.tipo === "Fechado sem resolver" ? "p-nr" : "p-ok"}">${esc(c.tipo)}</span>
+    ${c.repetidas.length ? '<span class="pill p-vio">Mesma reserva</span>' : ""}
+    ${c.orientacao ? '<span class="pill p-or">Orientação ao hóspede</span>' : ""}${c.aberto ? '<span class="pill p-nr">Ainda aberto</span>' : ""}</div>
+   <div class="meta">${c.n} chamados em ${c.dias} dias · ${c.reservas_distintas} reserva${c.reservas_distintas > 1 ? "s" : ""} · ${esc(c.praca || "")} · ${esc(c.rota || "sem rota")} · ${esc(c.negocio || "")}</div>
+   <ul class="tl">${c.chamados.map((x) => `<li><span class="d">${fmtData(x.criado_em)}</span><div>
+     <div class="tt"><b>${esc(x.titulo)}</b>${x.reserva ? `<span class="res ${c.repetidas.includes(x.reserva) ? "rep" : ""}" title="Código da reserva">${esc(x.reserva)}</span>` : ""}<a class="cod" href="${JESTOR}${x.id}" target="_blank" rel="noopener" title="Abrir chamado no Jestor">${esc(x.cod || "#" + x.id)} ↗</a><span class="cod">${x.status !== "Finalizado" ? " · " + esc(x.status) : ""}</span></div>
+     ${encerramento(x)}</div></li>`).join("")}</ul></div>`).join("") || `<p class="skel">Nenhum caso com esses filtros.</p>`;
+}
+
+window.addEventListener("hashchange", iniciar);
+iniciar();
+</script>
+</body>
+</html>
