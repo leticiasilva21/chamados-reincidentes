@@ -223,9 +223,6 @@ async function atualizarAgora(btn) {
 
 function montar() {
   const C = D.casos || [];
-  const nr = C.filter((c) => c.tipo === "Fechado sem resolver");
-  const reab = C.reduce((a, c) => a + c.n - 1, 0);
-  const total = D.total_chamados || 0;
   for (const c of C) {
     const cont = {};
     c.chamados.forEach((x) => { if (x.reserva) cont[x.reserva] = (cont[x.reserva] || 0) + 1; });
@@ -235,13 +232,18 @@ function montar() {
   <div class="top"><div><h1>Chamados reincidentes</h1>
    <p class="sub">Mesma unidade, mesmo problema, chamado aberto de novo. Dados do Jestor, atualizados sozinhos a cada 10 minutos.</p></div>
    <div class="stamp"><span>Últimos 60 dias (desde ${fmtData(D.janela_inicio)}) · atualizado ${fmtHora(D.atualizado_em)}</span><button id="refresh" type="button">Atualizar agora</button></div></div>
-  <div class="kpis">
-   <div class="kpi"><b>${C.length}</b><span>casos de problema repetido</span></div>
-   <div class="kpi"><b>${new Set(C.map((c) => c.unidade)).size}</b><span>unidades afetadas</span></div>
-   <div class="kpi"><b>${reab}</b><span>chamados reabertos (${total ? (reab / total * 100).toFixed(1).replace(".", ",") : "0"}% de ${total.toLocaleString("pt-BR")})</span></div>
-   <div class="kpi bad"><b>${nr.length}</b><span>com chamado fechado sem resolver</span></div>
-   <div class="kpi vio"><b>${C.filter((c) => c.repetidas.length).length}</b><span>voltaram na mesma reserva</span></div>
+  <div class="filters">
+   <select id="f-tipo" aria-label="Situação"><option value="">Todas as situações</option><option>Fechado sem resolver</option><option>Resolvido, mas voltou</option></select>
+   <select id="f-res" aria-label="Reserva"><option value="">Qualquer reserva</option><option value="mesma">Voltou na mesma reserva</option><option value="outra">Só em reservas diferentes</option></select>
+   <select id="f-item" aria-label="Problema"><option value="">Todos os problemas</option></select>
+   <select id="f-rota" aria-label="Rota"><option value="">Todas as rotas</option></select>
+   <select id="f-lider" aria-label="Líder"><option value="">Todos os líderes</option></select>
+   <select id="f-praca" aria-label="Praça"><option value="">Todas as praças</option></select>
+   <input id="f-q" type="search" placeholder="Buscar unidade, reserva ou texto">
+   <button type="button" id="f-limpar" hidden>Limpar filtros</button>
+   <span class="count" id="count"></span>
   </div>
+  <div class="kpis" id="kpis"></div>
   <div class="grid2">
    <div><h2>Por tipo de problema</h2>${legenda()}<div class="bars" id="b-item"></div></div>
    <div><h2>Por rota e líder</h2>${legenda()}<div class="bars" id="b-rota"></div>
@@ -255,20 +257,13 @@ function montar() {
    <li>A ligação entre chamados é automática, pelo título e começo da descrição. Limpeza e enxoval ficam de fora.</li>
   </ul></div>
   <h2>Casos</h2>
-  <div class="filters">
-   <select id="f-tipo" aria-label="Situação"><option value="">Todas as situações</option><option>Fechado sem resolver</option><option>Resolvido, mas voltou</option></select>
-   <select id="f-res" aria-label="Reserva"><option value="">Qualquer reserva</option><option value="mesma">Voltou na mesma reserva</option><option value="outra">Só em reservas diferentes</option></select>
-   <select id="f-item" aria-label="Problema"><option value="">Todos os problemas</option></select>
-   <select id="f-rota" aria-label="Rota"><option value="">Todas as rotas</option></select>
-   <select id="f-lider" aria-label="Líder"><option value="">Todos os líderes</option></select>
-   <select id="f-praca" aria-label="Praça"><option value="">Todas as praças</option></select>
-   <input id="f-q" type="search" placeholder="Buscar unidade, reserva ou texto">
-   <span class="count" id="count"></span>
-  </div>
   <div id="list"></div></main>`;
   ligarSair();
   $("#refresh").addEventListener("click", (e) => atualizarAgora(e.currentTarget));
-  bars("#b-item", (c) => c.problema); bars("#b-rota", (c) => c.rota ? `${c.rota}${c.lider && c.lider !== c.rota ? " · " + c.lider : ""}` : null); bars("#b-praca", (c) => c.praca);
+  $("#f-limpar").addEventListener("click", () => {
+    document.querySelectorAll(".filters select, .filters input").forEach((el) => (el.value = ""));
+    render();
+  });
   opts("#f-item", "problema"); opts("#f-rota", "rota"); opts("#f-lider", "lider"); opts("#f-praca", "praca");
   ["#f-tipo", "#f-res", "#f-item", "#f-rota", "#f-lider", "#f-praca"].forEach((s) => $(s).addEventListener("change", render));
   $("#f-q").addEventListener("input", render);
@@ -277,9 +272,22 @@ function montar() {
 
 const legenda = () => `<div class="leg"><span><i style="background:var(--bad)"></i>fechado sem resolver</span><span><i style="background:var(--warn-bar)"></i>resolvido, mas voltou</span></div>`;
 
-function bars(el, chave) {
+// cartões e gráficos seguem os filtros: recebem só os casos filtrados
+function kpis(L, filtrado) {
+  const reab = L.reduce((a, c) => a + c.n - 1, 0);
+  const total = D.total_chamados || 0;
+  const pct = !filtrado && total ? ` (${(reab / total * 100).toFixed(1).replace(".", ",")}% de ${total.toLocaleString("pt-BR")})` : "";
+  $("#kpis").innerHTML = `
+   <div class="kpi"><b>${L.length}</b><span>casos de problema repetido</span></div>
+   <div class="kpi"><b>${new Set(L.map((c) => c.unidade)).size}</b><span>unidades afetadas</span></div>
+   <div class="kpi"><b>${reab}</b><span>chamados reabertos${pct}</span></div>
+   <div class="kpi bad"><b>${L.filter((c) => c.tipo === "Fechado sem resolver").length}</b><span>com chamado fechado sem resolver</span></div>
+   <div class="kpi vio"><b>${L.filter((c) => c.repetidas.length).length}</b><span>voltaram na mesma reserva</span></div>`;
+}
+
+function bars(el, L, chave) {
   const m = {};
-  D.casos.forEach((c) => { const k = chave(c) || "—"; m[k] = m[k] || [0, 0]; m[k][c.tipo === "Fechado sem resolver" ? 0 : 1]++; });
+  L.forEach((c) => { const k = chave(c) || "—"; m[k] = m[k] || [0, 0]; m[k][c.tipo === "Fechado sem resolver" ? 0 : 1]++; });
   const rows = Object.entries(m).sort((a, b) => b[1][0] + b[1][1] - (a[1][0] + a[1][1]));
   const mx = Math.max(1, ...rows.map((r) => r[1][0] + r[1][1]));
   $(el).innerHTML = rows.map(([k, [a, b]]) => `<div class="bar"><span>${esc(k)}</span><span class="t"><i style="width:${a / mx * 100}%;background:var(--bad)"></i><i style="width:${b / mx * 100}%;background:var(--warn-bar)"></i></span><span class="n">${a + b}</span></div>`).join("");
@@ -308,7 +316,13 @@ function render() {
   const t = $("#f-tipo").value, r = $("#f-res").value, i = $("#f-item").value, ro = $("#f-rota").value, li = $("#f-lider").value, p = $("#f-praca").value, q = $("#f-q").value.toLowerCase().trim();
   const L = D.casos.filter((c) => (!t || c.tipo === t) && (!i || c.problema === i) && (!ro || c.rota === ro) && (!li || c.lider === li) && (!p || c.praca === p)
     && (!r || (r === "mesma" ? c.repetidas.length : !c.repetidas.length)) && (!q || JSON.stringify(c).toLowerCase().includes(q)));
-  $("#count").textContent = L.length + " de " + D.casos.length + " casos";
+  const filtrado = !!(t || r || i || ro || li || p || q);
+  $("#count").textContent = filtrado ? `Mostrando ${L.length} de ${D.casos.length} casos` : `${D.casos.length} casos`;
+  $("#f-limpar").hidden = !filtrado;
+  kpis(L, filtrado);
+  bars("#b-item", L, (c) => c.problema);
+  bars("#b-rota", L, (c) => c.rota ? `${c.rota}${c.lider && c.lider !== c.rota ? " · " + c.lider : ""}` : null);
+  bars("#b-praca", L, (c) => c.praca);
   $("#list").innerHTML = L.map((c) => `<div class="caso ${c.tipo === "Fechado sem resolver" ? "nr" : ""}">
    <div class="head"><span class="u">${esc(c.unidade)}</span><span class="pill p-it">${esc(c.problema)}</span>
     <span class="pill ${c.tipo === "Fechado sem resolver" ? "p-nr" : "p-ok"}">${esc(c.tipo)}</span>
