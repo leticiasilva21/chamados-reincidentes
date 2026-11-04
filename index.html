@@ -48,7 +48,10 @@ button[disabled]{opacity:.6;cursor:wait}
 .bar small{color:var(--mute)}
 .leg{display:flex;gap:14px;font-size:.8rem;color:var(--mute);margin-bottom:8px;flex-wrap:wrap}
 .leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
-.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:6px 0 16px;padding:12px;background:var(--panel);border-radius:10px}
+/* faixa de filtros logo abaixo do cabeçalho, presa ao topo enquanto a página rola */
+.filtros-faixa{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--panel);border-bottom:1px solid var(--line);box-shadow:0 2px 8px rgba(22,41,79,.06);padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;max-width:1100px;margin:0 auto}
+.filters button{padding:5px 12px}
 .filters select,.filters input{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-width:0;max-width:100%}
 .filters input{flex:1 1 200px}
 .count{color:var(--mute);font-size:.86rem;margin-left:auto}
@@ -87,6 +90,8 @@ a.cod{color:var(--navy-2);font-weight:700;text-decoration:none}a.cod:hover{text-
 .card button{width:100%;padding:10px}
 .link{background:none;border:none;color:var(--navy-2);font-weight:700;padding:0;text-decoration:underline;cursor:pointer;justify-self:center;width:auto}
 .link:hover{background:none;color:var(--orange)}
+/* no celular os sete filtros ocupam meia tela: a faixa fica no topo, mas não acompanha a rolagem */
+@media (max-width:700px){.filtros-faixa{position:static}}
 @media (max-width:520px){.bar{grid-template-columns:130px minmax(0,1fr) 30px}.tl>li{grid-template-columns:44px minmax(0,1fr)}.bar-top .t{display:none}}
 </style>
 </head>
@@ -228,11 +233,7 @@ function montar() {
     c.chamados.forEach((x) => { if (x.reserva) cont[x.reserva] = (cont[x.reserva] || 0) + 1; });
     c.repetidas = Object.keys(cont).filter((k) => cont[k] > 1);
   }
-  $("#app").innerHTML = cabecalho() + `<main class="wrap">
-  <div class="top"><div><h1>Chamados reincidentes</h1>
-   <p class="sub">Mesma unidade, mesmo problema, chamado aberto de novo. Dados do Jestor, atualizados sozinhos a cada 10 minutos.</p></div>
-   <div class="stamp"><span>Últimos 60 dias (desde ${fmtData(D.janela_inicio)}) · atualizado ${fmtHora(D.atualizado_em)}</span><button id="refresh" type="button">Atualizar agora</button></div></div>
-  <div class="filters">
+  $("#app").innerHTML = cabecalho() + `<div class="filtros-faixa"><div class="filters">
    <select id="f-tipo" aria-label="Situação"><option value="">Todas as situações</option><option>Fechado sem resolver</option><option>Resolvido, mas voltou</option></select>
    <select id="f-res" aria-label="Reserva"><option value="">Qualquer reserva</option><option value="mesma">Voltou na mesma reserva</option><option value="outra">Só em reservas diferentes</option></select>
    <select id="f-item" aria-label="Problema"><option value="">Todos os problemas</option></select>
@@ -242,7 +243,11 @@ function montar() {
    <input id="f-q" type="search" placeholder="Buscar unidade, reserva ou texto">
    <button type="button" id="f-limpar" hidden>Limpar filtros</button>
    <span class="count" id="count"></span>
-  </div>
+  </div></div>
+  <main class="wrap">
+  <div class="top"><div><h1>Chamados reincidentes</h1>
+   <p class="sub">Mesma unidade, mesmo problema, chamado aberto de novo. Dados do Jestor, atualizados sozinhos a cada 10 minutos.</p></div>
+   <div class="stamp"><span>Últimos 60 dias (desde ${fmtData(D.janela_inicio)}) · atualizado ${fmtHora(D.atualizado_em)}</span><button id="refresh" type="button">Atualizar agora</button></div></div>
   <div class="kpis" id="kpis"></div>
   <div class="grid2">
    <div><h2>Por tipo de problema</h2>${legenda()}<div class="bars" id="b-item"></div></div>
